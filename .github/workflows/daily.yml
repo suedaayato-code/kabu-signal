@@ -1,0 +1,72 @@
+# 平日の夕方にダッシュボードを作り直して GitHub Pages に公開し、必要なときだけ Discord に通知する。
+#
+# セキュリティ:
+#   - 外部のアクションは GitHub 公式(actions/*)だけを使い、タグではなくコミット SHA で固定する
+#   - 権限は既定で全て無し。このジョブに必要な最小限(読み取り・Pages 公開)だけを与える
+#   - Discord の Webhook URL は Secret に置き、通知を送るステップにだけ渡す
+#   - pull_request では動かさない(フォークから Secret や公開権限に触れさせない)
+name: daily
+
+on:
+  schedule:
+    - cron: "0 8 * * 1-5"      # 平日 17:00 JST(GitHub の混雑で数十分遅れることがある)
+  workflow_dispatch:
+    inputs:
+      test_notify:
+        description: "Discord に通知テストを送る"
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - run: python -m pytest -q
+
+      - name: 通知テスト
+        if: inputs.test_notify
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python build.py --test-notify
+
+      - name: ダッシュボードを生成
+        run: python build.py --defer-notify "$RUNNER_TEMP/notify.json"
+
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
+
+      - id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+      - name: 公開後に通知
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python build.py --send "$RUNNER_TEMP/notify.json"

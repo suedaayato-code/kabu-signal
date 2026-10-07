@@ -1,0 +1,23 @@
+# kabu-signal の設定。このファイルは公開リポジトリに置かれるので、保有銘柄・金額・URL の秘密は書かないこと。
+# (Discord の Webhook URL は GitHub の Secret「DISCORD_WEBHOOK_URL」に入れる)
+
+site_title: "買い時チェック"
+# 通知のリンク先(GitHub Pages の URL)
+site_url: "https://suedaayato-code.github.io/kabu-signal/"
+
+# ticker は Yahoo Finance の表記。東証の銘柄は「証券コード.T」(例: 7203.T)。
+# 投資信託は Yahoo Finance に無いので、連動先の指数で代用する。
+watchlist:
+  - ticker: "^N225"
+    name: "日経平均(eMAXIS Slim 国内株式(日経平均))"
+  - ticker: "1306.T"
+    name: "TOPIX ETF(1306)"
+  - ticker: "1655.T"
+    name: "S&P500 ETF 円建て(1655)"
+  - ticker: "^GSPC"
+    name: "S&P500 指数(ドル建て・長期の参考)"
+
+momentum:
+  enabled: true
+  # 1銘柄に使う予算(かぶミニで何株買えるかの表示に使う)
+  budget_per_stock: 300000
